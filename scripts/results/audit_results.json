@@ -1,0 +1,13 @@
+{
+  "source": "live_docker",
+  "total_rules": 5,
+  "total_findings": 0,
+  "findings": [],
+  "severity_counts": {
+    "CRITICAL": 0,
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0,
+    "INFO": 0
+  }
+}

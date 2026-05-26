@@ -1,0 +1,118 @@
+{
+  "generated_at": "2026-05-26T21:15:36.210178",
+  "provenance": "measured",
+  "baseline_public_set": [
+    "53/udp",
+    "80/tcp"
+  ],
+  "protected_set": [
+    "123/udp",
+    "22/tcp",
+    "27017/tcp",
+    "3389/tcp"
+  ],
+  "experiment_configs": [
+    {
+      "mode": "flawed",
+      "config_name": "Flawed Stateless",
+      "config_desc": "Stateless allow rules with tcp --sport 80 and udp --sport 53 bypasses",
+      "public_services": 2,
+      "affected_services": 4,
+      "false_positive_candidates": 2,
+      "candidate_services": 6,
+      "detection_rate": 1.0,
+      "false_positive_rate": 0.3333,
+      "observable_expansion_pct": 200.0,
+      "scan_duration_sec": 24.25,
+      "lab_only_risk_score": 70.0,
+      "affected_service_ids": [
+        "123/udp",
+        "22/tcp",
+        "27017/tcp",
+        "3389/tcp"
+      ],
+      "public_service_ids": [
+        "53/udp",
+        "80/tcp"
+      ]
+    },
+    {
+      "mode": "flags",
+      "config_name": "Stateless + TCP Flags",
+      "config_desc": "TCP ACK filtering blocks new TCP bypass, UDP source-port bypass remains",
+      "public_services": 2,
+      "affected_services": 1,
+      "false_positive_candidates": 2,
+      "candidate_services": 3,
+      "detection_rate": 0.25,
+      "false_positive_rate": 0.6667,
+      "observable_expansion_pct": 50.0,
+      "scan_duration_sec": 12.19,
+      "lab_only_risk_score": 10.0,
+      "affected_service_ids": [
+        "123/udp"
+      ],
+      "public_service_ids": [
+        "53/udp",
+        "80/tcp"
+      ]
+    },
+    {
+      "mode": "secure",
+      "config_name": "Secure Stateful",
+      "config_desc": "State tracking preserves public HTTP/DNS and blocks hidden-service bypass",
+      "public_services": 2,
+      "affected_services": 0,
+      "false_positive_candidates": 2,
+      "candidate_services": 2,
+      "detection_rate": 0.0,
+      "false_positive_rate": 1.0,
+      "observable_expansion_pct": 0.0,
+      "scan_duration_sec": 8.2,
+      "lab_only_risk_score": 0,
+      "affected_service_ids": [],
+      "public_service_ids": [
+        "53/udp",
+        "80/tcp"
+      ]
+    }
+  ],
+  "paper_reference_data": {
+    "SSH": {
+      "affected": 234984,
+      "public": 25307484,
+      "expansion_pct": 0.93
+    },
+    "Telnet": {
+      "affected": 50820,
+      "public": 2504330,
+      "expansion_pct": 2.03
+    },
+    "RDP": {
+      "affected": 7931,
+      "public": 3504675,
+      "expansion_pct": 0.23
+    },
+    "MongoDB": {
+      "affected": 338,
+      "public": 198470,
+      "expansion_pct": 0.17
+    },
+    "DNS": {
+      "affected": 334358,
+      "public": 5287835,
+      "expansion_pct": 6.32
+    },
+    "NTP": {
+      "affected": 824389,
+      "public": 6545301,
+      "expansion_pct": 12.6
+    }
+  },
+  "metrics_explanation": {
+    "detection_rate": "affected protected services / total protected services in the lab",
+    "false_positive_rate": "public services seen during identify+probe / all identify+probe candidates",
+    "observable_expansion_pct": "affected services / public baseline services * 100",
+    "lab_only_risk_score": "lab-specific weighted score over affected services"
+  }
+}

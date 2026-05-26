@@ -1,0 +1,127 @@
+{
+  "generated_at": "2026-05-26T14:15:36.166261",
+  "execution_context": {
+    "inside_attacker_container": true,
+    "target_host": "172.20.2.2"
+  },
+  "workflow": {
+    "designated_ports": {
+      "tcp": 80,
+      "udp": 53
+    },
+    "high_source_ports": [
+      45123,
+      52847,
+      61204
+    ],
+    "max_iterations": 1,
+    "iterations_run": 1
+  },
+  "phase_stats": {
+    "identify_candidates": 2,
+    "probe_successes": 2,
+    "validate_public_hits": 2
+  },
+  "summary": {
+    "public_services": 2,
+    "affected_services": 0,
+    "closed_services": 4,
+    "inconclusive_services": 0,
+    "observable_expansion_pct": 0.0
+  },
+  "services": [
+    {
+      "host": "172.20.2.2",
+      "service": "ssh",
+      "port": 22,
+      "protocol": "tcp",
+      "designated_source_port": 80,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "http",
+      "port": 80,
+      "protocol": "tcp",
+      "designated_source_port": 80,
+      "exposure": "public",
+      "identify_responsive": true,
+      "probe_ok": true,
+      "probe_summary": "HTTP/1.0 200 OK\r\nServer: SimpleHTTP/0.6 Python/3.10.12\r\nDate: Tue, 26 May 2026 14:15:30 GMT\r\nContent-type: text/html\r\nContent-Length: 32\r\nLast-Modified: Tue, 26 May 2026 14:07:03 GMT",
+      "validated_from_high_port": true,
+      "errors": [],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "mongodb",
+      "port": 27017,
+      "protocol": "tcp",
+      "designated_source_port": 80,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "rdp",
+      "port": 3389,
+      "protocol": "tcp",
+      "designated_source_port": 80,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "dns",
+      "port": 53,
+      "protocol": "udp",
+      "designated_source_port": 53,
+      "exposure": "public",
+      "identify_responsive": true,
+      "probe_ok": true,
+      "probe_summary": "DNS-LAB-OK",
+      "validated_from_high_port": true,
+      "errors": [],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "ntp",
+      "port": 123,
+      "protocol": "udp",
+      "designated_source_port": 53,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    }
+  ],
+  "all_risks": []
+}
