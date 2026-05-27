@@ -165,40 +165,54 @@ wait_for_victim_services() {
     log "Waiting for victim services to start..."
     local expected_tcp=("22" "80" "27017" "3389")
     local expected_udp=("53" "123")
+    local timeout_seconds=120
     local attempt=0
+    local listeners=""
+    local missing=()
+    local port
 
-    while (( attempt < 30 )); do
-        local listeners
-        listeners=$(docker exec "${VICTIM_CONTAINER}" bash -lc "ss -lntup" 2>/dev/null || true)
-        local ready=1
-        local port
+    while (( attempt < timeout_seconds )); do
+        if ! container_running "${VICTIM_CONTAINER}"; then
+            err "Victim container exited during bootstrap."
+            info "Recent victim logs:"
+            docker logs "${VICTIM_CONTAINER}" 2>&1 | tail -n 40 || true
+            exit 1
+        fi
+
+        listeners=$(docker exec "${VICTIM_CONTAINER}" bash -lc "ss -lntu" 2>/dev/null || true)
+        missing=()
 
         for port in "${expected_tcp[@]}"; do
             if ! grep -q ":${port} " <<<"${listeners}"; then
-                ready=0
-                break
+                missing+=("tcp/${port}")
             fi
         done
 
-        if (( ready == 1 )); then
-            for port in "${expected_udp[@]}"; do
-                if ! grep -q ":${port} " <<<"${listeners}"; then
-                    ready=0
-                    break
-                fi
-            done
-        fi
+        for port in "${expected_udp[@]}"; do
+            if ! grep -q ":${port} " <<<"${listeners}"; then
+                missing+=("udp/${port}")
+            fi
+        done
 
-        if (( ready == 1 )); then
+        if (( ${#missing[@]} == 0 )); then
             log "Victim services are listening."
             return
+        fi
+
+        if (( attempt > 0 && attempt % 10 == 0 )); then
+            info "Victim still starting; waiting on: ${missing[*]}"
         fi
 
         attempt=$((attempt + 1))
         sleep 1
     done
 
-    err "Victim services did not become ready in time."
+    err "Victim services did not become ready within ${timeout_seconds}s."
+    info "Still missing: ${missing[*]}"
+    info "Current listeners:"
+    docker exec "${VICTIM_CONTAINER}" ss -lntu 2>/dev/null || true
+    info "Recent victim logs:"
+    docker logs "${VICTIM_CONTAINER}" 2>&1 | tail -n 40 || true
     exit 1
 }
 
