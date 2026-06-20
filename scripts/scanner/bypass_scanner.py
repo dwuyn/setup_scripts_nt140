@@ -73,21 +73,31 @@ class ServiceResult:
 
 
 SERVICE_RISKS: Dict[Tuple[str, int], List[str]] = {
-    ("tcp", 22): ["SSH service reachable behind misconfigured firewall"],
+    ("tcp", 22):    ["SSH service reachable behind misconfigured firewall"],
+    ("tcp", 23):    ["Telnet (plaintext) reachable — credential sniffing risk"],
     ("tcp", 27017): ["MongoDB internal service exposed through firewall bypass"],
-    ("tcp", 3389): ["RDP internal service exposed through firewall bypass"],
-    ("udp", 123): ["NTP internal service exposed through UDP source-port bypass"],
+    ("tcp", 3389):  ["RDP internal service exposed through firewall bypass"],
+    ("udp", 123):   ["NTP internal service exposed through UDP source-port bypass"],
+    ("tcp", 1883):  ["MQTT broker exposed — unauthenticated IoT message bus accessible"],
+    ("udp", 5683):  ["CoAP gateway exposed through UDP source-port bypass (IoT protocol)"],
+    ("tcp", 502):   ["Modbus/TCP ICS service exposed — critical infrastructure risk"],
+    ("tcp", 8080):  ["Internal Admin API exposed via HTTPS source-port (443) bypass"],
 }
 
 
 def build_service_specs() -> List[ServiceSpec]:
     return [
-        ServiceSpec("ssh", 22, "tcp", 80, b"", True),
-        ServiceSpec("http", 80, "tcp", 80, b"HEAD / HTTP/1.0\r\nHost: victim\r\n\r\n", False),
-        ServiceSpec("mongodb", 27017, "tcp", 80, b"", True),
-        ServiceSpec("rdp", 3389, "tcp", 80, b"", True),
-        ServiceSpec("dns", 53, "udp", 53, b"DNS-LAB-PROBE", False),
-        ServiceSpec("ntp", 123, "udp", 53, b"NTP-LAB-PROBE", False),
+        ServiceSpec("ssh",       22,    "tcp", 80,  b"",             True),
+        ServiceSpec("http",      80,    "tcp", 80,  b"HEAD / HTTP/1.0\r\nHost: victim\r\n\r\n", False),
+        ServiceSpec("telnet",    23,    "tcp", 80,  b"",             True),
+        ServiceSpec("mongodb",   27017, "tcp", 80,  b"",             True),
+        ServiceSpec("rdp",       3389,  "tcp", 80,  b"",             True),
+        ServiceSpec("mqtt",      1883,  "tcp", 80,  b"",             True),
+        ServiceSpec("modbus",    502,   "tcp", 80,  b"",             True),
+        ServiceSpec("api_admin", 8080,  "tcp", 443, b"",             True),
+        ServiceSpec("dns",       53,    "udp", 53,  b"DNS-LAB-PROBE", False),
+        ServiceSpec("ntp",       123,   "udp", 53,  b"NTP-LAB-PROBE", False),
+        ServiceSpec("coap",      5683,  "udp", 53,  b"CoAP-LAB-PROBE", False),
     ]
 
 
@@ -365,7 +375,7 @@ def maybe_reexec_inside_attacker(argv: Sequence[str]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Measured firewall bypass scanner")
     parser.add_argument("--target-host", default=DEFAULT_TARGET, help="Victim IP address inside the lab")
-    parser.add_argument("--max-iterations", type=int, default=1, help="Maximum workflow iterations")
+    parser.add_argument("--max-iterations", type=int, default=3, help="Maximum workflow iterations")
     parser.add_argument("--json", action="store_true", help="Print JSON report to stdout")
     return parser.parse_args()
 

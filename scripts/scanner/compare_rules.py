@@ -19,19 +19,25 @@ SCRIPT_DIR = os.path.dirname(__file__)
 SETUP_SCRIPT = os.path.join(SCRIPT_DIR, "..", "labsetup", "setup.sh")
 SCANNER_SCRIPT = os.path.join(SCRIPT_DIR, "bypass_scanner.py")
 
-PROTECTED_SET = {("tcp", 22), ("tcp", 27017), ("tcp", 3389), ("udp", 123)}
+PROTECTED_SET = {("tcp", 22), ("tcp", 23), ("tcp", 27017), ("tcp", 3389), ("udp", 123),
+                 ("tcp", 1883), ("udp", 5683), ("tcp", 502), ("tcp", 8080)}
 PUBLIC_BASELINE_SET = {("tcp", 80), ("udp", 53)}
 SERVICE_RISK_WEIGHTS = {
-    ("tcp", 22): 15.0,
+    ("tcp", 22):    15.0,
+    ("tcp", 23):    20.0,   # Telnet — plaintext, credential exposure
     ("tcp", 27017): 25.0,
-    ("tcp", 3389): 20.0,
-    ("udp", 123): 10.0,
+    ("tcp", 3389):  20.0,
+    ("udp", 123):   10.0,
+    ("tcp", 1883):  15.0,   # MQTT — IoT message bus
+    ("udp", 5683):  10.0,   # CoAP — IoT gateway protocol
+    ("tcp", 502):   30.0,   # Modbus — ICS/SCADA critical infrastructure
+    ("tcp", 8080):  15.0,   # Admin API — exposed via sport-443 bypass
 }
 
 CONFIGS = [
-    ("flawed", "Flawed Stateless", "Stateless allow rules with tcp --sport 80 and udp --sport 53 bypasses"),
-    ("flags", "Stateless + TCP Flags", "TCP ACK filtering blocks new TCP bypass, UDP source-port bypass remains"),
-    ("secure", "Secure Stateful", "State tracking preserves public HTTP/DNS and blocks hidden-service bypass"),
+    ("flawed", "Flawed Stateless",       "Stateless rules: --sport 80 and --sport 443 (TCP), --sport 53 (UDP) all bypass filtering"),
+    ("flags",  "Stateless + TCP Flags",  "TCP ACK filter blocks sport-80/443 new flows; UDP sport-53 bypass remains"),
+    ("secure", "Secure Stateful",        "State tracking: only established connections accepted; all bypasses blocked"),
 ]
 
 PAPER_REFERENCE = {
@@ -81,7 +87,12 @@ def set_mode(mode: str) -> None:
 
 
 def run_scanner() -> Dict:
-    completed = run_command([sys.executable, SCANNER_SCRIPT, "--json"])
+    completed = run_command([
+        "docker", "exec",
+        "-e", "BYPASS_SCANNER_IN_CONTAINER=1",
+        "attacker",
+        "python3", "/lab/scripts/scanner/bypass_scanner.py", "--json",
+    ])
     return json.loads(completed.stdout)
 
 

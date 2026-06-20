@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-26T14:15:36.166261",
+  "generated_at": "2026-06-20T07:58:03.268297",
   "execution_context": {
     "inside_attacker_container": true,
     "target_host": "172.20.2.2"
@@ -14,8 +14,8 @@
       52847,
       61204
     ],
-    "max_iterations": 1,
-    "iterations_run": 1
+    "max_iterations": 3,
+    "iterations_run": 2
   },
   "phase_stats": {
     "identify_candidates": 2,
@@ -25,7 +25,7 @@
   "summary": {
     "public_services": 2,
     "affected_services": 0,
-    "closed_services": 4,
+    "closed_services": 9,
     "inconclusive_services": 0,
     "observable_expansion_pct": 0.0
   },
@@ -55,9 +55,25 @@
       "exposure": "public",
       "identify_responsive": true,
       "probe_ok": true,
-      "probe_summary": "HTTP/1.0 200 OK\r\nServer: SimpleHTTP/0.6 Python/3.10.12\r\nDate: Tue, 26 May 2026 14:15:30 GMT\r\nContent-type: text/html\r\nContent-Length: 32\r\nLast-Modified: Tue, 26 May 2026 14:07:03 GMT",
+      "probe_summary": "HTTP/1.0 200 OK\r\nServer: SimpleHTTP/0.6 Python/3.10.12\r\nDate: Sat, 20 Jun 2026 07:57:47 GMT\r\nContent-type: text/html\r\nContent-Length: 32\r\nLast-Modified: Sat, 20 Jun 2026 07:53:53 GMT",
       "validated_from_high_port": true,
       "errors": [],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "telnet",
+      "port": 23,
+      "protocol": "tcp",
+      "designated_source_port": 80,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
       "security_risks": []
     },
     {
@@ -94,6 +110,54 @@
     },
     {
       "host": "172.20.2.2",
+      "service": "mqtt",
+      "port": 1883,
+      "protocol": "tcp",
+      "designated_source_port": 80,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "modbus",
+      "port": 502,
+      "protocol": "tcp",
+      "designated_source_port": 80,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "api_admin",
+      "port": 8080,
+      "protocol": "tcp",
+      "designated_source_port": 443,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
       "service": "dns",
       "port": 53,
       "protocol": "udp",
@@ -110,6 +174,22 @@
       "host": "172.20.2.2",
       "service": "ntp",
       "port": 123,
+      "protocol": "udp",
+      "designated_source_port": 53,
+      "exposure": "closed",
+      "identify_responsive": false,
+      "probe_ok": false,
+      "probe_summary": "",
+      "validated_from_high_port": false,
+      "errors": [
+        "timed out"
+      ],
+      "security_risks": []
+    },
+    {
+      "host": "172.20.2.2",
+      "service": "coap",
+      "port": 5683,
       "protocol": "udp",
       "designated_source_port": 53,
       "exposure": "closed",

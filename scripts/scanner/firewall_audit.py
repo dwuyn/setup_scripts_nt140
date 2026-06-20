@@ -40,6 +40,9 @@ RISKY_SOURCE_PORTS = {
     53: ("DNS", Severity.CRITICAL, "DNS traffic - common stateless UDP misconfiguration"),
     443: ("HTTPS", Severity.HIGH, "HTTPS traffic - can expose hidden services"),
     123: ("NTP", Severity.HIGH, "NTP traffic - common UDP loophole"),
+    1883: ("MQTT", Severity.HIGH, "MQTT broker - unauthenticated IoT message bus"),
+    5683: ("CoAP", Severity.HIGH, "CoAP gateway - IoT protocol over UDP"),
+    502: ("Modbus", Severity.CRITICAL, "Modbus/TCP - ICS/SCADA critical infrastructure"),
 }
 
 FLAWED_RULES_SAMPLE = """
@@ -49,8 +52,9 @@ FLAWED_RULES_SAMPLE = """
 -A FORWARD -s 172.20.2.0/24 -d 172.20.1.0/24 -j ACCEPT
 -A FORWARD -p tcp -d 172.20.2.2 --dport 80 -j ACCEPT
 -A FORWARD -p udp -d 172.20.2.2 --dport 53 -j ACCEPT
--A FORWARD -p tcp --sport 80 -d 172.20.2.0/24 -j ACCEPT
--A FORWARD -p udp --sport 53 -d 172.20.2.0/24 -j ACCEPT
+-A FORWARD -p tcp --sport 80  -d 172.20.2.0/24 -j ACCEPT
+-A FORWARD -p tcp --sport 443 -d 172.20.2.0/24 -j ACCEPT
+-A FORWARD -p udp --sport 53  -d 172.20.2.0/24 -j ACCEPT
 -A FORWARD -s 172.20.1.0/24 -d 172.20.2.0/24 -j DROP
 """
 
@@ -61,8 +65,9 @@ FLAGS_RULES_SAMPLE = """
 -A FORWARD -s 172.20.2.0/24 -d 172.20.1.0/24 -j ACCEPT
 -A FORWARD -p tcp -d 172.20.2.2 --dport 80 -j ACCEPT
 -A FORWARD -p udp -d 172.20.2.2 --dport 53 -j ACCEPT
--A FORWARD -p tcp --sport 80 --tcp-flags SYN,RST,ACK ACK -d 172.20.2.0/24 -j ACCEPT
--A FORWARD -p udp --sport 53 -d 172.20.2.0/24 -j ACCEPT
+-A FORWARD -p tcp --sport 80  --tcp-flags SYN,RST,ACK ACK -d 172.20.2.0/24 -j ACCEPT
+-A FORWARD -p tcp --sport 443 --tcp-flags SYN,RST,ACK ACK -d 172.20.2.0/24 -j ACCEPT
+-A FORWARD -p udp --sport 53  -d 172.20.2.0/24 -j ACCEPT
 -A FORWARD -s 172.20.1.0/24 -d 172.20.2.0/24 -j DROP
 """
 
@@ -144,7 +149,7 @@ class IptablesParser:
     def parse_from_docker(self, container: str) -> List[IptablesRule]:
         try:
             output = subprocess.check_output(
-                ["docker", "exec", container, "iptables", "-S"],
+                ["docker", "exec", container, "iptables-legacy", "-S"],
                 stderr=subprocess.DEVNULL,
             ).decode()
         except (subprocess.CalledProcessError, FileNotFoundError, PermissionError):

@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-05-26T21:15:36.210178",
+  "generated_at": "2026-06-20T14:58:03.287311",
   "provenance": "measured",
   "baseline_public_set": [
     "53/udp",
@@ -7,29 +7,39 @@
   ],
   "protected_set": [
     "123/udp",
+    "1883/tcp",
     "22/tcp",
+    "23/tcp",
     "27017/tcp",
-    "3389/tcp"
+    "3389/tcp",
+    "502/tcp",
+    "5683/udp",
+    "8080/tcp"
   ],
   "experiment_configs": [
     {
       "mode": "flawed",
       "config_name": "Flawed Stateless",
-      "config_desc": "Stateless allow rules with tcp --sport 80 and udp --sport 53 bypasses",
+      "config_desc": "Stateless rules: --sport 80 and --sport 443 (TCP), --sport 53 (UDP) all bypass filtering",
       "public_services": 2,
-      "affected_services": 4,
+      "affected_services": 9,
       "false_positive_candidates": 2,
-      "candidate_services": 6,
+      "candidate_services": 11,
       "detection_rate": 1.0,
-      "false_positive_rate": 0.3333,
-      "observable_expansion_pct": 200.0,
-      "scan_duration_sec": 24.25,
-      "lab_only_risk_score": 70.0,
+      "false_positive_rate": 0.1818,
+      "observable_expansion_pct": 450.0,
+      "scan_duration_sec": 108.26,
+      "lab_only_risk_score": 100.0,
       "affected_service_ids": [
         "123/udp",
+        "1883/tcp",
         "22/tcp",
+        "23/tcp",
         "27017/tcp",
-        "3389/tcp"
+        "3389/tcp",
+        "502/tcp",
+        "5683/udp",
+        "8080/tcp"
       ],
       "public_service_ids": [
         "53/udp",
@@ -39,18 +49,19 @@
     {
       "mode": "flags",
       "config_name": "Stateless + TCP Flags",
-      "config_desc": "TCP ACK filtering blocks new TCP bypass, UDP source-port bypass remains",
+      "config_desc": "TCP ACK filter blocks sport-80/443 new flows; UDP sport-53 bypass remains",
       "public_services": 2,
-      "affected_services": 1,
+      "affected_services": 2,
       "false_positive_candidates": 2,
-      "candidate_services": 3,
-      "detection_rate": 0.25,
-      "false_positive_rate": 0.6667,
-      "observable_expansion_pct": 50.0,
-      "scan_duration_sec": 12.19,
-      "lab_only_risk_score": 10.0,
+      "candidate_services": 4,
+      "detection_rate": 0.2222,
+      "false_positive_rate": 0.5,
+      "observable_expansion_pct": 100.0,
+      "scan_duration_sec": 52.18,
+      "lab_only_risk_score": 20.0,
       "affected_service_ids": [
-        "123/udp"
+        "123/udp",
+        "5683/udp"
       ],
       "public_service_ids": [
         "53/udp",
@@ -60,7 +71,7 @@
     {
       "mode": "secure",
       "config_name": "Secure Stateful",
-      "config_desc": "State tracking preserves public HTTP/DNS and blocks hidden-service bypass",
+      "config_desc": "State tracking: only established connections accepted; all bypasses blocked",
       "public_services": 2,
       "affected_services": 0,
       "false_positive_candidates": 2,
@@ -68,7 +79,7 @@
       "detection_rate": 0.0,
       "false_positive_rate": 1.0,
       "observable_expansion_pct": 0.0,
-      "scan_duration_sec": 8.2,
+      "scan_duration_sec": 36.15,
       "lab_only_risk_score": 0,
       "affected_service_ids": [],
       "public_service_ids": [

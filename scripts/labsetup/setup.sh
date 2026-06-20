@@ -42,9 +42,13 @@ Usage:
 
 Defaults:
   - "up" creates the lab and applies flawed rules.
-  - HTTP (80/tcp) and DNS (53/udp) stay public in every mode.
-  - SSH (22/tcp), MongoDB (27017/tcp), RDP (3389/tcp), and NTP (123/udp)
-    are the protected services used for workflow reproduction.
+    - HTTP (80/tcp) and DNS (53/udp) stay public in every mode.
+  - SSH (22/tcp), MongoDB (27017/tcp), RDP (3389/tcp), Telnet (23/tcp),
+    and NTP (123/udp) are the original protected services.
+  - MQTT (1883/tcp), CoAP (5683/udp), and Modbus (502/tcp) are IoT
+    extension services, also protected.
+  - Internal Admin API (8080/tcp) is a new service reachable only via
+    --sport 443 source-port bypass (HTTPS trust misconfiguration).
 EOF
 }
 
@@ -95,7 +99,7 @@ start_victim() {
             set -e
             export DEBIAN_FRONTEND=noninteractive
             apt-get update -qq
-            apt-get install -y -qq openssh-server python3 iproute2 >/dev/null
+            apt-get install -y -qq openssh-server python3 iproute2 > /dev/null
 
             mkdir -p /run/sshd
             echo 'root:password123' | chpasswd
@@ -110,6 +114,7 @@ import time
 UDP_RESPONSES = {
     53: b'DNS-LAB-OK\n',
     123: b'NTP-LAB-OK\n',
+    5683: b'CoAP 1.0 gateway\n',
 }
 
 def serve_udp(port: int, response: bytes) -> None:
@@ -154,17 +159,69 @@ while True:
     client, _ = sock.accept()
     threading.Thread(target=handle, args=(client,), daemon=True).start()
 \" >/tmp/rdp.log 2>&1 &
+            python3 -c \"
+import socket, threading
+def handle(client):
+    client.sendall(b'MQTT 3.1.1 broker\\n')
+    client.close()
+sock = socket.socket()
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(('0.0.0.0', 1883))
+sock.listen(32)
+while True:
+    client, _ = sock.accept()
+    threading.Thread(target=handle, args=(client,), daemon=True).start()
+\" >/tmp/mqtt.log 2>&1 &
+            python3 -c \"
+import socket, threading
+def handle(client):
+    client.sendall(b'Modbus/TCP 1.0 ICS\\n')
+    client.close()
+sock = socket.socket()
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(('0.0.0.0', 502))
+sock.listen(32)
+while True:
+    client, _ = sock.accept()
+    threading.Thread(target=handle, args=(client,), daemon=True).start()
+\" >/tmp/modbus.log 2>&1 &
+            python3 -c \"
+import socket, threading
+def handle(client):
+    client.sendall(b'Telnet 2.0 LAB\\r\\n')
+    client.close()
+sock = socket.socket()
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(('0.0.0.0', 23))
+sock.listen(32)
+while True:
+    client, _ = sock.accept()
+    threading.Thread(target=handle, args=(client,), daemon=True).start()
+\" >/tmp/telnet.log 2>&1 &
+            python3 -c \"
+import socket, threading
+def handle(client):
+    client.sendall(b'Internal Admin API v2.0 (CONFIDENTIAL)\\n')
+    client.close()
+sock = socket.socket()
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sock.bind(('0.0.0.0', 8080))
+sock.listen(32)
+while True:
+    client, _ = sock.accept()
+    threading.Thread(target=handle, args=(client,), daemon=True).start()
+\" >/tmp/api_admin.log 2>&1 &
             python3 -m http.server 80 --directory /tmp >/tmp/http.log 2>&1 &
             exec tail -f /dev/null
-        " >/dev/null
+        " > /dev/null
 
-    log "Victim ready with SSH, HTTP, MongoDB, RDP, DNS, and NTP services."
+    log "Victim ready with SSH, HTTP, MongoDB, RDP, DNS, NTP, MQTT, CoAP, Modbus, Telnet, and Admin API services."
 }
 
 wait_for_victim_services() {
     log "Waiting for victim services to start..."
-    local expected_tcp=("22" "80" "27017" "3389")
-    local expected_udp=("53" "123")
+    local expected_tcp=("22" "80" "27017" "3389" "1883" "502" "23" "8080")
+    local expected_udp=("53" "123" "5683")
     local timeout_seconds=120
     local attempt=0
     local listeners=""
@@ -251,6 +308,7 @@ start_attacker() {
         --network "${OUTSIDE_NETWORK}" \
         --ip "${ATTACKER_IP}" \
         --cap-add NET_ADMIN \
+        --cap-add NET_BIND_SERVICE \
         -v "${REPO_ROOT}:${LAB_MOUNT}" \
         -w "${LAB_MOUNT}" \
         ubuntu:22.04 \
@@ -285,11 +343,11 @@ setup_routes() {
 reset_firewall() {
     docker exec "${FIREWALL_CONTAINER}" bash -c "
         conntrack -F >/dev/null 2>&1 || true
-        iptables -F
-        iptables -X
-        iptables -P INPUT ACCEPT
-        iptables -P OUTPUT ACCEPT
-        iptables -P FORWARD DROP
+        iptables-legacy -F
+        iptables-legacy -X
+        iptables-legacy -P INPUT ACCEPT
+        iptables-legacy -P OUTPUT ACCEPT
+        iptables-legacy -P FORWARD DROP
     " >/dev/null
 }
 
@@ -297,39 +355,41 @@ apply_flawed_rules() {
     log "Applying flawed stateless rules..."
     reset_firewall
     docker exec "${FIREWALL_CONTAINER}" bash -c "
-        iptables -A FORWARD -s ${INSIDE_SUBNET} -d ${OUTSIDE_SUBNET} -j ACCEPT
-        iptables -A FORWARD -p tcp -d ${VICTIM_IP} --dport 80 -j ACCEPT
-        iptables -A FORWARD -p udp -d ${VICTIM_IP} --dport 53 -j ACCEPT
-        iptables -A FORWARD -p tcp --sport 80 -d ${INSIDE_SUBNET} -j ACCEPT
-        iptables -A FORWARD -p udp --sport 53 -d ${INSIDE_SUBNET} -j ACCEPT
-        iptables -A FORWARD -s ${OUTSIDE_SUBNET} -d ${INSIDE_SUBNET} -j DROP
-    " >/dev/null
-    warn "Flawed mode active: any TCP flow from source port 80 and UDP flow from source port 53 can bypass filtering."
+        iptables-legacy -A FORWARD -s ${INSIDE_SUBNET} -d ${OUTSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -p tcp -d ${VICTIM_IP} --dport 80 -j ACCEPT
+        iptables-legacy -A FORWARD -p udp -d ${VICTIM_IP} --dport 53 -j ACCEPT
+        iptables-legacy -A FORWARD -p tcp --sport 80  -d ${INSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -p tcp --sport 443 -d ${INSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -p udp --sport 53  -d ${INSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -s ${OUTSIDE_SUBNET} -d ${INSIDE_SUBNET} -j DROP
+    " > /dev/null
+    warn "Flawed mode active: TCP bypass via --sport 80 and --sport 443; UDP bypass via --sport 53."
 }
 
 apply_flags_rules() {
     log "Applying stateless TCP flag-filtered rules..."
     reset_firewall
     docker exec "${FIREWALL_CONTAINER}" bash -c "
-        iptables -A FORWARD -s ${INSIDE_SUBNET} -d ${OUTSIDE_SUBNET} -j ACCEPT
-        iptables -A FORWARD -p tcp -d ${VICTIM_IP} --dport 80 -j ACCEPT
-        iptables -A FORWARD -p udp -d ${VICTIM_IP} --dport 53 -j ACCEPT
-        iptables -A FORWARD -p tcp --sport 80 --tcp-flags SYN,RST,ACK ACK -d ${INSIDE_SUBNET} -j ACCEPT
-        iptables -A FORWARD -p udp --sport 53 -d ${INSIDE_SUBNET} -j ACCEPT
-        iptables -A FORWARD -s ${OUTSIDE_SUBNET} -d ${INSIDE_SUBNET} -j DROP
-    " >/dev/null
-    warn "Flags mode active: TCP bypass blocked, UDP source-port bypass remains."
+        iptables-legacy -A FORWARD -s ${INSIDE_SUBNET} -d ${OUTSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -p tcp -d ${VICTIM_IP} --dport 80 -j ACCEPT
+        iptables-legacy -A FORWARD -p udp -d ${VICTIM_IP} --dport 53 -j ACCEPT
+        iptables-legacy -A FORWARD -p tcp --sport 80  --tcp-flags SYN,RST,ACK ACK -d ${INSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -p tcp --sport 443 --tcp-flags SYN,RST,ACK ACK -d ${INSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -p udp --sport 53  -d ${INSIDE_SUBNET} -j ACCEPT
+        iptables-legacy -A FORWARD -s ${OUTSIDE_SUBNET} -d ${INSIDE_SUBNET} -j DROP
+    " > /dev/null
+    warn "Flags mode active: TCP bypass (sport 80/443) blocked by ACK filter; UDP sport-53 bypass remains."
 }
 
 apply_secure_rules() {
     log "Applying secure stateful rules..."
     reset_firewall
     docker exec "${FIREWALL_CONTAINER}" bash -c "
-        iptables -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
-        iptables -A FORWARD -s ${INSIDE_SUBNET} -d ${OUTSIDE_SUBNET} -m state --state NEW -j ACCEPT
-        iptables -A FORWARD -p tcp -d ${VICTIM_IP} --dport 80 -m state --state NEW -j ACCEPT
-        iptables -A FORWARD -p udp -d ${VICTIM_IP} --dport 53 -j ACCEPT
-        iptables -A FORWARD -s ${OUTSIDE_SUBNET} -d ${INSIDE_SUBNET} -j DROP
+        iptables-legacy -A FORWARD -m state --state ESTABLISHED,RELATED -j ACCEPT
+        iptables-legacy -A FORWARD -s ${INSIDE_SUBNET} -d ${OUTSIDE_SUBNET} -m state --state NEW -j ACCEPT
+        iptables-legacy -A FORWARD -p tcp -d ${VICTIM_IP} --dport 80 -m state --state NEW -j ACCEPT
+        iptables-legacy -A FORWARD -p udp -d ${VICTIM_IP} --dport 53 -j ACCEPT
+        iptables-legacy -A FORWARD -s ${OUTSIDE_SUBNET} -d ${INSIDE_SUBNET} -j DROP
     " >/dev/null
     log "Secure mode active: only public HTTP/DNS remain reachable inbound."
 }
@@ -355,13 +415,13 @@ detect_mode() {
     fi
 
     local rules
-    rules=$(docker exec "${FIREWALL_CONTAINER}" iptables -S FORWARD 2>/dev/null || true)
+    rules=$(docker exec "${FIREWALL_CONTAINER}" iptables-legacy -S FORWARD 2>/dev/null || true)
 
     if grep -q -- "--tcp-flags SYN,RST,ACK ACK" <<<"${rules}"; then
         echo "flags"
     elif grep -q -- "--state" <<<"${rules}" && grep -q -- "ESTABLISHED" <<<"${rules}" && grep -q -- "RELATED" <<<"${rules}"; then
         echo "secure"
-    elif grep -q -- "--sport 80" <<<"${rules}" && grep -q -- "--sport 53" <<<"${rules}"; then
+    elif grep -q -- "--sport 80" <<<"${rules}" && grep -q -- "--sport 443" <<<"${rules}" && grep -q -- "--sport 53" <<<"${rules}"; then
         echo "flawed"
     else
         echo "unknown"
@@ -385,10 +445,15 @@ print_summary() {
     echo "  DNS  : UDP 53"
     echo ""
     info "Protected services for workflow reproduction:"
-    echo "  SSH     : TCP 22"
-    echo "  MongoDB : TCP 27017"
-    echo "  RDP     : TCP 3389"
-    echo "  NTP     : UDP 123"
+    echo "  SSH        : TCP 22"
+    echo "  MongoDB    : TCP 27017"
+    echo "  RDP        : TCP 3389"
+    echo "  Telnet     : TCP 23     [expansion: paper comparison]"
+    echo "  NTP        : UDP 123"
+    echo "  MQTT       : TCP 1883   [IoT]"
+    echo "  CoAP       : UDP 5683   [IoT]"
+    echo "  Modbus     : TCP 502    [IoT/ICS]"
+    echo "  Admin API  : TCP 8080   [expansion: sport-443 bypass vector]"
     echo ""
     info "Current firewall mode: ${mode}"
     echo ""
@@ -414,7 +479,7 @@ status() {
     if container_running "${FIREWALL_CONTAINER}"; then
         echo ""
         echo "FORWARD chain:"
-        docker exec "${FIREWALL_CONTAINER}" iptables -S FORWARD
+        docker exec "${FIREWALL_CONTAINER}" iptables-legacy -S FORWARD
     fi
 }
 
