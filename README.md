@@ -49,16 +49,20 @@ Route duoc ep tay de moi traffic tu attacker sang victim phai di qua firewall.
 
 ### Service map
 
-Victim dang mo 6 service:
+Victim đang mở 9 service:
 
 - Public baseline:
   - `80/tcp` HTTP
-  - `53/udp` DNS responder toi gian
-- Protected services:
+  - `53/udp` DNS responder tối giản
+- Protected services (truyền thống):
   - `22/tcp` SSH
   - `27017/tcp` MongoDB banner server
   - `3389/tcp` RDP banner server
-  - `123/udp` NTP responder toi gian
+  - `123/udp` NTP responder tối giản
+- Protected services (IoT/ICS extension):
+  - `1883/tcp` MQTT broker
+  - `5683/udp` CoAP gateway
+  - `502/tcp` Modbus/TCP ICS
 
 Y nghia:
 
@@ -147,7 +151,7 @@ Trong container `victim`, script khoi dong:
   - `53/udp` tra `DNS-LAB-OK`
   - `123/udp` tra `NTP-LAB-OK`
 
-Service readiness duoc check bang `ss -lntup`. Neu chua du 6 listener, script se doi.
+Service readiness được check bằng `ss -lntup`. Nếu chưa đủ 9 listener, script se đợi.
 
 ### `firewall_node` hoat dong the nao
 
@@ -256,7 +260,7 @@ Nghia la ban khong can tu vao container.
 
 ### Service ma scanner quan tam
 
-Scanner scan 6 service co dinh:
+- Scanner scan 9 service co dinh:
 
 - `ssh` -> `22/tcp`
 - `http` -> `80/tcp`
@@ -264,6 +268,9 @@ Scanner scan 6 service co dinh:
 - `rdp` -> `3389/tcp`
 - `dns` -> `53/udp`
 - `ntp` -> `123/udp`
+- `mqtt` -> `1883/tcp` [IoT]
+- `coap` -> `5683/udp` [IoT]
+- `modbus` -> `502/tcp` [IoT/ICS]
 
 ### 3 pha cua scanner
 
@@ -370,6 +377,9 @@ Protected set co dinh:
 - `27017/tcp`
 - `3389/tcp`
 - `123/udp`
+- `1883/tcp` MQTT
+- `5683/udp` CoAP
+- `502/tcp` Modbus
 
 Public baseline set co dinh:
 
@@ -387,8 +397,8 @@ Metric:
 
 Neu moi thu dung, comparison report se ra:
 
-- `flawed`: `affected=4`, `public=2`
-- `flags`: `affected=1`, `public=2`
+- `flawed`: `affected=7`, `public=2`
+- `flags`: `affected=2`, `public=2`
 - `secure`: `affected=0`, `public=2`
 
 ### Output
@@ -565,9 +575,9 @@ Observable expansion  : 200.0%
 thi doc nhu sau:
 
 - `public=2`: 2 service dung la public (`80/tcp`, `53/udp`)
-- `affected=4`: 4 service dang le hidden nhung bi lo do rule sai
+- `affected=7`: 7 service dang le hidden nhung bi lo do rule sai
 - `closed=0`: trong run do, khong service nao trong target set bi unreachable
-- `expansion=200%`: tu 2 service public ban nhin thay them 4 service hidden
+- `expansion=350%`: tu 2 service public ban nhin thay them 7 service hidden
 
 Neu dong service ghi:
 
@@ -595,10 +605,10 @@ Theo report measured gan nhat trong `scripts/results/comparison_results.json`:
 
 - `flawed`
   - `public=2`
-  - `affected=4`
+  - `affected=7`
 - `flags`
   - `public=2`
-  - `affected=1`
+  - `affected=2`
 - `secure`
   - `public=2`
   - `affected=0`
